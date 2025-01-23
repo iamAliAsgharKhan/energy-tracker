@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Energy Tracker - Electricity Usage Monitor</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #4F46E5;
+            --secondary: #6366F1;
+            --success: #10B981;
+            --danger: #EF4444;
+            --background: #F8FAFC;
+            --card-bg: #FFFFFF;
+            --text: #1E293B;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background: var(--background);
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 2.5rem;
+        }
+
+        .header h1 {
+            font-size: 2.2rem;
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+
+        .grid {
+            display: grid;
+            gap: 1.5rem;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            border: 1px solid #E2E8F0;
+        }
+
+        .input-group {
+            margin-bottom: 1.2rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: #64748B;
+            font-size: 0.9rem;
+        }
+
+        input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #E2E8F0;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        }
+
+        .button {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+        }
+
+        .button-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .button-secondary {
+            background: var(--secondary);
+            color: white;
+        }
+
+        .button-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .button:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        .chart-container {
+            margin-top: 2rem;
+            height: 400px;
+            position: relative;
+        }
+
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 2rem;
+            background: var(--card-bg);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .history-table th,
+        .history-table td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid #E2E8F0;
+        }
+
+        .history-table th {
+            background: var(--primary);
+            color: white;
+            font-weight: 500;
+        }
+
+        .tier-input {
+            display: grid;
+            grid-template-columns: 1fr 1fr auto;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            align-items: center;
+        }
+
+        .tier-input button {
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .tier-input button:hover {
+            transform: scale(0.98);
+            opacity: 0.9;
+        }
+
+
+        .data-management {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-top: 2rem;
+        }
+
+        .alert {
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+
+        .alert-success {
+            background: #D1FAE5;
+            color: #065F46;
+        }
+
+        .alert-error {
+            background: #FEE2E2;
+            color: #B91C1C;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+            
+            .tier-input {
+                grid-template-columns: 1fr;
+            }
+            
+            .button {
+                width: 100%;
+                justify-content: center;
+            }
+            
+            .history-table {
+                display: block;
+                overflow-x: auto;
+            }
+
+            .tier-input button {
+                width: 100%;
+                margin-top: 0.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔋 Energy Tracker</h1>
+            <p>Track and predict your electricity consumption</p>
+        </div>
+
+        <div class="grid">
+            <div class="card">
+                <h2>Current Reading</h2>
+                <div class="input-group">
+                    <label for="lastReading">Last Reading (20th)</label>
+                    <input type="number" id="lastReading" required>
+                </div>
+                
+                <div class="input-group">
+                    <label for="currentReading">Current Reading</label>
+                    <input type="number" id="currentReading" required>
+                </div>
+                
+                <div class="input-group">
+                    <label for="currentDate">Current Date</label>
+                    <input type="date" id="currentDate" required>
+                </div>
+                
+                <div class="grid" style="grid-template-columns: repeat(2, 1fr); gap: 1rem;">
+                    <button class="button button-primary" onclick="calculateUsage()">
+                        📊 Calculate
+                    </button>
+                    <button class="button button-secondary" onclick="saveCurrent()">
+                        💾 Save Current
+                    </button>
+                </div>
+                
+                <div id="result" class="alert alert-success" style="display: none;"></div>
+                <div id="error" class="alert alert-error" style="display: none;"></div>
+            </div>
+
+            <div class="card">
+                <h2>Tariff Settings</h2>
+                <div id="tierSettings">
+                    <!-- Tier inputs will be added here -->
+                </div>
+                <button class="button button-secondary" onclick="addTier()" style="margin-top: 1rem;">
+                    ➕ Add Tier
+                </button>
+                <button class="button button-primary" onclick="saveTiers()" style="margin-top: 0.5rem;">
+                    💾 Save Tariff
+                </button>
+            </div>
+        </div>
+
+        <div class="card" style="margin-top: 2rem;">
+            <h2>Consumption History</h2>
+            <div class="chart-container">
+                <canvas id="usageChart"></canvas>
+            </div>
+            
+            <table class="history-table">
+                <thead>
+                    <tr>
+                        <th>Month</th>
+                        <th>Units (KWH)</th>
+                        <th>Bill (Rs)</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="historyBody"></tbody>
+            </table>
+        </div>
+
+        <div class="card" style="margin-top: 2rem;">
+            <h2>Data Management</h2>
+            <div class="data-management">
+                <button class="button button-primary" onclick="exportData()">
+                    📤 Export Data
+                </button>
+                <input type="file" id="importFile" accept=".json" hidden>
+                <button class="button button-secondary" onclick="document.getElementById('importFile').click()">
+                    📥 Import Data
+                </button>
+            </div>
+
+
+           
+          <div id="result2" class="alert alert-success" style="display: none; margin-top: 1rem;"></div>
+        </div>
+    </div>
+
+    <script>
+      let usageChart = null;
+  
+      // Initialize application
+      window.onload = function() {
+          // Load input values
+          ['lastReading', 'currentReading', 'currentDate'].forEach(id => {
+              const value = localStorage.getItem(id);
+              if(value) document.getElementById(id).value = value;
+          });
+  
+          // Set default date
+          if(!document.getElementById('currentDate').value) {
+              document.getElementById('currentDate').value = new Date().toISOString().split('T')[0];
+          }
+  
+          // Load tiers and history
+          loadTiers();
+          updateHistoryDisplay();
+      };
+  
+      function getMonthYear(currentDate) {
+          const date = new Date(currentDate);
+          date.setDate(20);
+          if(date > new Date(currentDate)) date.setMonth(date.getMonth() - 1);
+          return {
+              month: date.toLocaleString('default', { month: 'long' }),
+              year: date.getFullYear(),
+              sortKey: date.getFullYear() * 100 + date.getMonth()
+          };
+      }
+  
+      function calculateBill(units) {
+          const tiers = JSON.parse(localStorage.getItem('tiers') || '[]');
+          if(tiers.length === 0) return 0;
+  
+          // Sort tiers by limit
+          tiers.sort((a, b) => a.limit - b.limit);
+  
+          let remainingUnits = units;
+          let totalBill = 0;
+          let previousLimit = 0;
+  
+          for(const tier of tiers) {
+              if(remainingUnits <= 0) break;
+              const slabUnits = Math.min(remainingUnits, tier.limit - previousLimit);
+              totalBill += slabUnits * tier.rate;
+              remainingUnits -= slabUnits;
+              previousLimit = tier.limit;
+          }
+  
+          return totalBill.toFixed(2);
+      }
+  
+      function calculateUsage() {
+          clearError();
+          const resultDiv = document.getElementById('result');
+          const errorDiv = document.getElementById('error');
+          
+          const lastReading = parseInt(document.getElementById('lastReading').value);
+          const currentReading = parseInt(document.getElementById('currentReading').value);
+          const currentDate = document.getElementById('currentDate').value;
+  
+          // Input validation
+          if(isNaN(lastReading) || isNaN(currentReading)) {
+              showError('Please enter valid meter readings');
+              return;
+          }
+  
+          if(currentReading < lastReading) {
+              showError('Current reading cannot be less than last reading');
+              return;
+          }
+  
+          const daysPassed = calculateDaysPassed(currentDate);
+          if(daysPassed <= 0) {
+              showError('Current date must be after last reading date (20th)');
+              return;
+          }
+  
+          // Save current state
+          localStorage.setItem('lastReading', lastReading);
+          localStorage.setItem('currentReading', currentReading);
+          localStorage.setItem('currentDate', currentDate);
+  
+          // Calculate usage
+          const unitsUsed = currentReading - lastReading;
+          const dailyUsage = unitsUsed / daysPassed;
+          const projectedUsage = Math.round(dailyUsage * 30);
+          const projectedBill = calculateBill(projectedUsage);
+  
+          // Display results
+          resultDiv.innerHTML = `
+              <h3>Results</h3>
+              <p>📈 Units Used: ${unitsUsed} KWH</p>
+              <p>📅 Days Passed: ${daysPassed} days</p>
+              <p>🔮 Projected Monthly Usage: ${projectedUsage} KWH</p>
+              <p>💸 Projected Monthly Bill: Rs. ${projectedBill}</p>
+          `;
+          resultDiv.style.display = 'block';
+          errorDiv.style.display = 'none';
+      }
+  
+      function saveCurrent() {
+          const currentReading = parseInt(document.getElementById('currentReading').value);
+          const lastReading = parseInt(document.getElementById('lastReading').value);
+          const currentDate = document.getElementById('currentDate').value;
+          
+          // Input validation
+          if(isNaN(currentReading) || isNaN(lastReading)) {
+              showError('Invalid meter readings');
+              return;
+          }
+  
+          const unitsUsed = currentReading - lastReading;
+          const { month, year, sortKey } = getMonthYear(currentDate);
+          
+          const history = JSON.parse(localStorage.getItem('usageHistory') || '[]');
+          
+          // Update existing entry or add new
+          const existingIndex = history.findIndex(entry => entry.sortKey === sortKey);
+          if(existingIndex >= 0) {
+              history[existingIndex] = { 
+                  month: `${month} ${year}`, 
+                  units: unitsUsed, 
+                  bill: calculateBill(unitsUsed), 
+                  sortKey 
+              };
+          } else {
+              history.push({
+                  month: `${month} ${year}`,
+                  units: unitsUsed,
+                  bill: calculateBill(unitsUsed),
+                  sortKey: sortKey
+              });
+          }
+  
+          history.sort((a, b) => a.sortKey - b.sortKey);
+          localStorage.setItem('usageHistory', JSON.stringify(history));
+          updateHistoryDisplay();
+      }
+  
+      function updateHistoryDisplay() {
+          const history = JSON.parse(localStorage.getItem('usageHistory') || '[]');
+          const tbody = document.getElementById('historyBody');
+          tbody.innerHTML = history.map(entry => `
+              <tr>
+                  <td>${entry.month}</td>
+                  <td>${entry.units}</td>
+                  <td>${entry.bill}</td>
+                  <td><button class="button button-danger" onclick="deleteEntry('${entry.month}')">Delete</button></td>
+              </tr>
+          `).join('');
+  
+          updateChart(history);
+      }
+  
+      function deleteEntry(month) {
+          const history = JSON.parse(localStorage.getItem('usageHistory') || '[]');
+          const filtered = history.filter(entry => entry.month !== month);
+          localStorage.setItem('usageHistory', JSON.stringify(filtered));
+          updateHistoryDisplay();
+      }
+  
+      function updateChart(history) {
+          const ctx = document.getElementById('usageChart').getContext('2d');
+          if(usageChart) usageChart.destroy();
+  
+          usageChart = new Chart(ctx, {
+              type: 'bar',
+              data: {
+                  labels: history.map(entry => entry.month),
+                  datasets: [{
+                      label: 'Units (KWH)',
+                      data: history.map(entry => entry.units),
+                      backgroundColor: 'rgba(75, 192, 192, 0.5)',
+                      borderColor: 'rgba(75, 192, 192, 1)',
+                      borderWidth: 1
+                  },
+                  {
+                      label: 'Bill (Rs)',
+                      data: history.map(entry => entry.bill),
+                      backgroundColor: 'rgba(255, 99, 132, 0.5)',
+                      borderColor: 'rgba(255, 99, 132, 1)',
+                      borderWidth: 1,
+                      type: 'line',
+                      yAxisID: 'y1'
+                  }]
+              },
+              options: {
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  scales: {
+                      y: {
+                          beginAtZero: true,
+                          title: { display: true, text: 'Units (KWH)' }
+                      },
+                      y1: {
+                          position: 'right',
+                          beginAtZero: true,
+                          title: { display: true, text: 'Bill (Rs)' },
+                          grid: { drawOnChartArea: false }
+                      }
+                  }
+              }
+          });
+      }
+  
+      function loadTiers() {
+          const savedTiers = JSON.parse(localStorage.getItem('tiers') || '[]');
+          const tierContainer = document.getElementById('tierSettings');
+          tierContainer.innerHTML = '';
+          
+          savedTiers.forEach((tier, index) => {
+              if(tier.limit === Infinity) return;
+              addTierInput(tier.limit, tier.rate);
+          });
+  
+          if(savedTiers.length === 0) addTierInput(100, 10);
+      }
+  
+      function addTierInput(limit = '', rate = '') {
+          const div = document.createElement('div');
+          div.className = 'tier-input';
+          div.innerHTML = `
+              <input type="number" class="tier-limit" placeholder="Limit (units)" 
+                  min="0" value="${limit}" required>
+              <input type="number" class="tier-rate" placeholder="Rate (Rs)" 
+                  min="0" step="0.1" value="${rate}" required>
+              <button class="button button-danger" onclick="this.parentElement.remove()">
+                  🗑 Delete
+              </button>
+          `;
+          document.getElementById('tierSettings').appendChild(div);
+      }
+  
+      function addTier() {
+          addTierInput();
+      }
+  
+      function saveTiers() {
+          const tiers = [];
+          document.querySelectorAll('.tier-input').forEach(input => {
+              const limit = parseFloat(input.querySelector('.tier-limit').value);
+              const rate = parseFloat(input.querySelector('.tier-rate').value);
+              if(!isNaN(limit) && !isNaN(rate)) {
+                  tiers.push({ limit, rate });
+              }
+          });
+  
+          if(tiers.length === 0) {
+              showError('Please add at least one tier!');
+              return;
+          }
+  
+          tiers.sort((a, b) => a.limit - b.limit);
+          tiers.push({ limit: Infinity, rate: tiers[tiers.length-1]?.rate || 0 });
+          
+          localStorage.setItem('tiers', JSON.stringify(tiers));
+
+        document.getElementById('result').innerHTML = '✅ Tariff settings saved successfully!';
+        document.getElementById('result').style.display = 'block';
+        setTimeout(() => {
+            document.getElementById('result').style.display = 'none';
+        }, 3000);
+      }
+  
+      function exportData() {
+          const data = {
+              tiers: JSON.parse(localStorage.getItem('tiers')),
+              history: JSON.parse(localStorage.getItem('usageHistory') || '[]'),
+              currentState: {
+                  lastReading: localStorage.getItem('lastReading'),
+                  currentReading: localStorage.getItem('currentReading'),
+                  currentDate: localStorage.getItem('currentDate')
+              }
+          };
+  
+          const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `electricity_data_${new Date().toISOString().split('T')[0]}.json`;
+          a.click();
+          URL.revokeObjectURL(url);
+      }
+  
+      document.getElementById('importFile').addEventListener('change', function(e) {
+          const file = e.target.files[0];
+          if(!file) return;
+  
+          const reader = new FileReader();
+          reader.onload = function(event) {
+              try {
+                  const data = JSON.parse(event.target.result);
+                  
+                  if(data.tiers) localStorage.setItem('tiers', JSON.stringify(data.tiers));
+                  if(data.history) localStorage.setItem('usageHistory', JSON.stringify(data.history));
+                  if(data.currentState) {
+                      localStorage.setItem('lastReading', data.currentState.lastReading);
+                      localStorage.setItem('currentReading', data.currentState.currentReading);
+                      localStorage.setItem('currentDate', data.currentState.currentDate);
+                  }
+  
+                  loadTiers();
+                  updateHistoryDisplay();
+
+                document.getElementById('result2').innerHTML = '✅ Data imported successfully! Settings and history updated.';
+                document.getElementById('result2').style.display = 'block';
+                setTimeout(() => {
+                    document.getElementById('result2').style.display = 'none';
+                }, 5000);
+              } catch(error) {
+                  showError('Invalid data file');
+              }
+          };
+          reader.readAsText(file);
+      });
+  
+      function calculateDaysPassed(currentDate) {
+          const date = new Date(currentDate);
+          const lastReadingDate = getLastReadingDate(currentDate);
+          return Math.floor((date - lastReadingDate) / (1000 * 3600 * 24));
+      }
+  
+      function getLastReadingDate(currentDate) {
+          const date = new Date(currentDate);
+          return date.getDate() >= 20 ? 
+              new Date(date.getFullYear(), date.getMonth(), 20) :
+              new Date(date.getFullYear(), date.getMonth() - 1, 20);
+      }
+  
+      function showError(message) {
+          const errorDiv = document.getElementById('error');
+          errorDiv.textContent = message;
+          errorDiv.style.display = 'block';
+          document.getElementById('result').style.display = 'none';
+      }
+  
+      function clearError() {
+          document.getElementById('error').style.display = 'none';
+          document.getElementById('result').style.display = 'none';
+      }
+  </script>
+</body>
+</html>
