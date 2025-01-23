@@ -41,4 +41,4 @@ No installation required. Use directly in modern browsers:
 
 1. Download files:
 ```bash
-git clone https://github.com/yourusername/energy-tracker.git
+git clone https://github.com/iamaliasgharkhan/energy-tracker.git
